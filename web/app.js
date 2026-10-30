@@ -412,12 +412,14 @@ function showTab(name){
   if (!TABS.includes(name)) name = "home";
   for (const t of TABS) $("view-" + t).hidden = t !== name;
   document.querySelectorAll(".tab").forEach(b => { if (b.dataset.tab === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-  if (location.hash.slice(1) !== name) { try { history.replaceState(null, "", "#" + name); } catch { location.hash = name; } }
+  if (location.hash.slice(1) !== name && !isAuthHash()) { try { history.replaceState(null, "", "#" + name); } catch { location.hash = name; } }
   window.scrollTo(0, 0);
 }
 document.querySelectorAll(".tab").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { if (keyOf(current) !== keyOf(new Date())) { current = new Date(); openDay(); } showTab(b.dataset.go); });
-window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+// 카카오 로그인에서 돌아오면 주소 뒤에 #access_token=… 이 붙어 와요. Supabase가 읽기 전에 지우면 안 돼요
+function isAuthHash(){ return /(^#|&)(access_token|refresh_token|error|error_description)=/.test(location.hash); }
+window.addEventListener("hashchange", () => { if (!isAuthHash()) showTab(location.hash.slice(1)); });
 
 // ---------- 홈 ----------
 function renderHome(){
@@ -1842,19 +1844,38 @@ function runLocal(){
   $("boot").hidden = true; openDay(); render(true);
   loadedOnce = true; checkOnboarding();
 }
+function authErrorFromUrl(){
+  const p = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
+  const e = p.get("error_description") || p.get("error");
+  return e ? decodeURIComponent(e.replace(/\+/g, " ")) : "";
+}
+let authListening = false;
 async function startApp(){
   $("boot").hidden = false;
-  openDay(); showTab(location.hash.slice(1) || "home");
-  if (!HAS_SERVER) { runLocal(); return; }
-  const { data } = await sbc.auth.getSession();
+  openDay();
+  if (!HAS_SERVER) { showTab(location.hash.slice(1) || "home"); runLocal(); return; }
+  const authErr = authErrorFromUrl();
+  const { data } = await sbc.auth.getSession();   // 주소에 붙어 온 로그인 정보는 여기서 읽혀요
   session = data.session;
-  sbc.auth.onAuthStateChange((_e, s) => { session = s; });
+  if (!authListening) {
+    authListening = true;
+    sbc.auth.onAuthStateChange((ev, s) => {
+      session = s;
+      if (ev === "SIGNED_IN" && s && !uid) startApp();   // 로그인이 조금 늦게 끝나도 이어서 시작
+    });
+  }
+  if (isAuthHash()) { try { history.replaceState(null, "", location.pathname + location.search); } catch {} }
+  showTab(location.hash.slice(1) || "home");
   if (!session) {
     let local = false; try { local = localStorage.getItem("meal-note:local") === "1"; } catch {}
-    if (local) { runLocal(); return; }
-    $("boot").hidden = true; $("login").hidden = false; return;
+    if (local && !authErr) { runLocal(); return; }
+    $("boot").hidden = true; $("login").hidden = false;
+    if (authErr) $("loginMsg").textContent = "로그인하지 못했어요: " + authErr;
+    return;
   }
+  if (uid === session.user.id) return;
   uid = session.user.id;
+  $("login").hidden = true;
   db = makeDb();
   sample = CFG.WORKER_URL ? makeSample() : null;
   $("acctName").textContent = (session.user.user_metadata?.name || session.user.user_metadata?.nickname || "카카오 계정") + "으로 로그인됨";
