@@ -230,6 +230,10 @@ function iconSVG(key){
 function icoEl(name){ const d = document.createElement("span"); d.className = "ex-ico"; d.innerHTML = iconSVG(EX_INFO[name]?.[0]); return d; }
 // 한쪽 무게·횟수로 적는 운동은 양쪽 합으로 볼륨 계산 (짐워크와 같은 방식)
 const PER_SIDE = new Set(["원 암 체스트 프레스 머신", "해머 아이소 래터럴 체스트 프레스", "원 암 케이블 레터럴 레이즈", "덤벨 사이드 레터럴 레이즈", "원 암 덤벨 로우"]);
+// 원판 안 끼운 빈 기계의 무게(시작 저항) · 기계 스티커 기준 · 사용자가 바꾸면 profile.baseKg 에 저장
+const BASE_KG = { "해머 아이소 래터럴 체스트 프레스": 3.2 };
+const baseKgOf = name => { const v = profile?.baseKg?.[name]; return v != null && v !== "" ? +v || 0 : BASE_KG[name] || 0; };
+const setLoad = (name, s) => (+s.kg || 0) + (+s.reps > 0 ? baseKgOf(name) : 0);
 const PARTS = Object.keys(EXERCISES);
 const CARDIO_MET = { "팔 돌리기": 3, "가슴 스트레칭": 2.5, "캣카우 스트레칭": 2.5, "밴드 풀어파트": 3, "밴드 외회전": 3, "맨몸 스쿼트": 4, "고관절 스트레칭": 2.5, "손목 돌리기": 2.5, "데드버그": 3, "러닝머신": 9, "경사 걷기": 6, "사이클": 7, "스텝밀": 9, "로잉머신": 7, "일립티컬": 5 };
 const STRENGTH_MET = 5, MIN_PER_SET = 2.5;
@@ -390,7 +394,7 @@ function workoutStats(w){
   const bw = TARGET.weight || 70;
   for (const e of w.exercises || []) {
     if (isCardio(e)) { const m = +e.minutes || 0; cardioMin += m; cardioKcal += (CARDIO_MET[e.name] || 6) * bw * m / 60; }
-    else { const k = PER_SIDE.has(e.name) ? 2 : 1; for (const s of e.sets || []) { const r = +s.reps || 0; if (r > 0 && s.done !== false) { sets++; volume += (+s.kg || 0) * r * k; } } }
+    else { const k = PER_SIDE.has(e.name) ? 2 : 1; for (const s of e.sets || []) { const r = +s.reps || 0; if (r > 0 && s.done !== false) { sets++; volume += setLoad(e.name, s) * r * k; } } }
     if (isCardio(e) && +e.minutes > 0) sets++;
   }
   const liveMin = (w.minutes || 0) + (w.startedAt ? Math.max(0, (Date.now() - w.startedAt) / 60000) : 0);
@@ -1276,7 +1280,7 @@ function exNums(e){
   if (isCardio(e)) return { min: +e.minutes || 0 };
   const k = PER_SIDE.has(e.name) ? 2 : 1, done = (e.sets || []).filter(x => +x.reps > 0 && x.done !== false);
   if (!done.length) return null;
-  return { maxKg: Math.max(...done.map(x => +x.kg || 0)), vol: done.reduce((a, x) => a + (+x.kg || 0) * (+x.reps || 0), 0) * k, reps: done.reduce((a, x) => a + (+x.reps || 0), 0) };
+  return { maxKg: Math.max(...done.map(x => +x.kg || 0)), vol: done.reduce((a, x) => a + setLoad(e.name, x) * (+x.reps || 0), 0) * k, reps: done.reduce((a, x) => a + (+x.reps || 0), 0) };
 }
 function progInfo(e){
   const prev = lastSetsFor(e.name), a = exNums(e), b = exNums(prev);
@@ -1305,7 +1309,7 @@ function progInfo(e){
 }
 function exStatsText(e){
   if (isCardio(e)) { const k = Math.round((CARDIO_MET[e.name] || 6) * (TARGET.weight || 70) * (+e.minutes || 0) / 60); return k ? `약 ${k} kcal` : ""; }
-  const v = (e.sets || []).filter(s => s.done !== false).reduce((a, s) => a + (+s.kg || 0) * (+s.reps || 0), 0) * (PER_SIDE.has(e.name) ? 2 : 1);
+  const v = (e.sets || []).filter(s => s.done !== false).reduce((a, s) => a + setLoad(e.name, s) * (+s.reps || 0), 0) * (PER_SIDE.has(e.name) ? 2 : 1);
   return v ? `${fmt(v)} kg` : "";
 }
 let restEnd = 0, restTotal = 90, restTick = 0;
@@ -1399,6 +1403,13 @@ function renderLog(){
     const prog = document.createElement("p"); prog.className = "prog";
     const upd = () => { st.textContent = exStatsText(e); const pi = progInfo(e); prog.textContent = pi.text; prog.className = "prog " + pi.cls; prog.hidden = !pi.text; };
     upd(); ex.appendChild(prog);
+    if (!isCardio(e) && EX_INFO[e.name]?.[1] === "machine") {
+      const b0 = baseKgOf(e.name);
+      const br = document.createElement("button"); br.className = "base-row";
+      br.textContent = b0 ? `빈 기계 ${one(b0).replace(".0", "")}kg${PER_SIDE.has(e.name) ? " (한쪽)" : ""} · 원판 무게만 적으면 볼륨에 더해요 · 바꾸기 ›` : "원판 끼우는 기계면 빈 기계 무게 적기 ›";
+      br.onclick = () => openBaseSheet(e.name);
+      ex.appendChild(br);
+    }
 
     if (isCardio(e)) {
       const sets = document.createElement("div"); sets.className = "sets";
@@ -1439,6 +1450,23 @@ function renderLog(){
   });
 }
 
+function openBaseSheet(name){
+  const { sh, close } = makeSheet(`${name} · 빈 기계 무게`);
+  const p = document.createElement("p"); p.className = "status";
+  p.textContent = "원판을 하나도 안 끼웠을 때의 무게예요. 기계 옆 스티커의 'Start ○○ lbs / ○kg'을 보면 나와요. 핀 꽂는 기계는 0으로 두면 돼요";
+  const lab = document.createElement("label"); lab.className = "lab full"; lab.textContent = PER_SIDE.has(name) ? "빈 기계 무게 (한쪽, kg)" : "빈 기계 무게 (kg)";
+  const inp = document.createElement("input"); inp.type = "number"; inp.inputMode = "decimal"; inp.step = "0.1"; inp.value = baseKgOf(name) || ""; inp.placeholder = "0";
+  lab.appendChild(inp);
+  const ok = document.createElement("button"); ok.className = "btn primary"; ok.textContent = "저장";
+  ok.onclick = () => {
+    const v = Math.max(0, Math.round((+inp.value || 0) * 10) / 10);
+    profile.baseKg = { ...(profile.baseKg || {}), [name]: v };
+    saveProfile(); render(true); close(); toast(v ? `빈 기계 ${v}kg로 저장했어요` : "빈 기계 무게를 0으로 저장했어요");
+  };
+  const no = document.createElement("button"); no.className = "btn"; no.textContent = "닫기"; no.onclick = close;
+  sh.append(p, lab, ok, no);
+  setTimeout(() => inp.focus(), 60);
+}
 function fmtClock(ms){ const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60; return (h ? h + ":" + pad(m) : m) + ":" + pad(sec); }
 function renderTimer(){
   const w = day.workout, isToday = keyOf(current) === keyOf(new Date());

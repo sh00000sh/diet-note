@@ -474,3 +474,6 @@ html.pre .wrap,html.pre .tabbar,html.pre .fab{visibility:hidden}
 .ph-prev{position:relative;border-radius:16px;overflow:hidden;background:var(--fill)}
 .ph-prev img{display:block;width:100%;max-height:240px;object-fit:cover}
 .ph-swap{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.55);color:#fff;font-size:.82rem;font-weight:700;padding:7px 12px;border-radius:999px;cursor:pointer}
+
+.base-row{display:block;width:100%;text-align:left;margin:-2px 0 8px;padding:0;color:var(--muted);font-size:.8rem;font-weight:600}
+.base-row:hover{color:var(--accent)}
