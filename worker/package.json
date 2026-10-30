@@ -1,0 +1,11 @@
+{
+  "name": "diet-note-api",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "web-push-browser": "1.4.2"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0"
+  }
+}

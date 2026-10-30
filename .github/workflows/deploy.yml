@@ -1,0 +1,75 @@
+name: 배포
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: 앱 화면 (GitHub Pages)
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 설정 파일 만들기
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          WORKER_URL: ${{ vars.WORKER_URL }}
+          VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
+        run: |
+          node -e '
+            const c = { SUPABASE_URL: process.env.SUPABASE_URL || "", SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "",
+                        WORKER_URL: process.env.WORKER_URL || "", VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || "" };
+            require("fs").writeFileSync("web/config.js", "window.DIET_CONFIG = " + JSON.stringify(c, null, 2) + ";\n");'
+          sed -i "s/const VERSION = \"v1\"/const VERSION = \"${GITHUB_SHA::8}\"/" web/sw.js
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  api:
+    name: 서버 (Cloudflare Worker)
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_WORKER == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+        working-directory: worker
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          secrets: |
+            ANTHROPIC_API_KEY
+            SUPABASE_SERVICE_KEY
+            VAPID_PRIVATE_KEY
+          vars: |
+            SUPABASE_URL
+            VAPID_PUBLIC_KEY
+            ALLOWED_ORIGIN
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
+          ALLOWED_ORIGIN: ${{ vars.ALLOWED_ORIGIN }}

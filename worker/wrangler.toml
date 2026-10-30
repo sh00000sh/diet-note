@@ -1,0 +1,10 @@
+name = "diet-note-api"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# 30분마다 알림 확인
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+AI_DAILY_LIMIT = "60"

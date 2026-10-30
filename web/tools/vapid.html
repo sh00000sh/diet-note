@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>알림 키 만들기</title>
+<style>
+:root{--bg:#fff;--fg:#14201a;--muted:#6b7a72;--line:#e3ebe6;--accent:#12a150;--card:#f6faf7}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1210;--fg:#e8f0eb;--muted:#8fa197;--line:#24302a;--accent:#2fcf72;--card:#151c18}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,"Pretendard",system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:32px 16px}
+h1{font-size:1.4rem;margin:0 0 6px}p{color:var(--muted);margin:0 0 18px}
+button{font:inherit;font-weight:700;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 18px;cursor:pointer}
+.k{margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.k b{display:block;margin-bottom:6px}.k code{display:block;word-break:break-all;font-size:.85rem;user-select:all;-webkit-user-select:all}
+.k button{margin-top:10px;padding:8px 14px;font-size:.9rem}
+.warn{color:#c2410c;font-size:.9rem;margin-top:14px}
+</style></head><body><main>
+<h1>알림 키 만들기</h1>
+<p>버튼을 누르면 이 브라우저 안에서만 키 한 쌍을 만들어요. 어디에도 전송되지 않아요.</p>
+<button id="go">키 만들기</button>
+<div id="out" hidden>
+  <div class="k"><b>VAPID_PUBLIC_KEY → GitHub 저장소 <u>Variables</u></b><code id="pub"></code><button data-c="pub">복사</button></div>
+  <div class="k"><b>VAPID_PRIVATE_KEY → GitHub 저장소 <u>Secrets</u></b><code id="priv"></code><button data-c="priv">복사</button></div>
+  <p class="warn">비공개 키(PRIVATE)는 Secrets에만 넣고 다른 곳에 붙여넣지 마세요. 키를 다시 만들면 이미 켠 알림은 다시 켜야 해요.</p>
+</div>
+<script>
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+document.getElementById("go").onclick = async () => {
+  const k = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  document.getElementById("pub").textContent = b64u(await crypto.subtle.exportKey("raw", k.publicKey));
+  document.getElementById("priv").textContent = b64u(await crypto.subtle.exportKey("pkcs8", k.privateKey));
+  document.getElementById("out").hidden = false;
+};
+document.querySelectorAll("[data-c]").forEach(b => b.onclick = async () => {
+  await navigator.clipboard.writeText(document.getElementById(b.dataset.c).textContent); b.textContent = "복사됨";
+  setTimeout(() => b.textContent = "복사", 1500);
+});
+</script></main></body></html>
