@@ -634,7 +634,7 @@ function renderMeal(){
     const b3 = document.createElement("label"); b3.className = "photo-cta"; b3.htmlFor = "ph-" + m.key;
     b3.innerHTML = '<span class="ph-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span><b>사진으로 기록</b><small>사진을 첨부하면 해당 식품에 맞춰 더 정확한 영양정보를 알려드려요</small></span>';
     const pf = document.createElement("input"); pf.type = "file"; pf.accept = "image/*"; pf.id = "ph-" + m.key; pf.className = "vh";
-    pf.onchange = () => { const f = pf.files[0]; pf.value = ""; if (f) photoRecord(m.key, f); };
+    pf.onchange = () => { const f = pf.files[0]; pf.value = ""; if (f) openPhotoSheet(m.key, f); };
     b3.appendChild(pf);
     acts.append(b1, b2, b3);
     const list = document.createElement("div"); list.className = "items";
@@ -717,6 +717,37 @@ async function photoRecord(meal, file){
     toast(`${x.name} 기록했어요 · ${fmt(x.kcal)}kcal, 단백질 ${x.protein}g`);
   } catch (e) { toast(aiErrMsg(e, "분석하지 못했어요. 잠시 후 다시 해보세요")); }
   finally { aiBusy = false; }
+}
+// 사진 고른 뒤: 미리보기 + 덧붙일 말 → 계산
+function openPhotoSheet(meal, firstFile){
+  const { sh, close } = makeSheet(`${mealTitle(meal)}에 먹은 거 사진으로 기록`);
+  let photo = firstFile, url = "";
+  const prev = document.createElement("div"); prev.className = "ph-prev";
+  const img = document.createElement("img"); img.alt = "고른 사진";
+  const swap = document.createElement("label"); swap.className = "ph-swap"; swap.textContent = "사진 바꾸기";
+  const file = document.createElement("input"); file.type = "file"; file.accept = "image/*"; file.className = "vh"; swap.appendChild(file);
+  prev.append(img, swap);
+  const show = f => { if (url) URL.revokeObjectURL(url); url = URL.createObjectURL(f); img.src = url; };
+  show(photo);
+  file.onchange = () => { const f = file.files[0]; file.value = ""; if (f) { photo = f; show(f); } };
+  const ta = document.createElement("textarea"); ta.placeholder = "덧붙일 말 (선택)\n예: 밥은 반 공기만 먹었어요 · 드레싱은 안 뿌렸어요 · 둘이서 나눠 먹었어요"; ta.setAttribute("aria-label", "덧붙일 말");
+  const st = document.createElement("p"); st.className = "status"; st.setAttribute("aria-live", "polite");
+  st.textContent = sample ? "양이나 빠진 재료를 적어주면 더 정확해져요 · 포장지 영양성분표를 찍으면 그 숫자 그대로 넣어요" : aiOffMsg();
+  const go = document.createElement("button"); go.className = "btn primary"; go.textContent = "칼로리 계산해서 기록";
+  const cancel = document.createElement("button"); cancel.className = "btn"; cancel.textContent = "닫기";
+  const done = () => { if (url) URL.revokeObjectURL(url); close(); };
+  cancel.onclick = done;
+  go.onclick = async () => {
+    if (!sample) { st.textContent = aiOffMsg(); return; }
+    if (aiBusy) return; aiBusy = true; go.disabled = true; st.textContent = "사진 속 음식을 분석하는 중이에요…";
+    try {
+      const x = await aiEstimate(ta.value.trim(), photo, meal);
+      day.extras.push(x); render(); scheduleSave(); done();
+      toast(`${x.name} 기록했어요 · ${fmt(x.kcal)}kcal, 단백질 ${x.protein}g`);
+    } catch (e) { st.textContent = aiErrMsg(e, "분석하지 못했어요. 잠시 후 다시 해보세요"); }
+    finally { aiBusy = false; go.disabled = false; }
+  };
+  sh.append(prev, ta, st, go, cancel);
 }
 function openInputSheet(meal){
   const { sh, close } = makeSheet(`${mealTitle(meal)}에 먹은 거 직접 입력`);
@@ -932,7 +963,7 @@ function workoutLine(w){
 
 async function aiEstimate(text, photo, meal){
   const prompt = `${personLine()}이 먹은 음식이야.
-${text ? "설명: " + text : "사진을 보고 음식을 알아봐줘."}
+${text ? (photo ? "사진을 보고 음식을 알아보되, 먹은 사람이 덧붙인 말을 양·재료 판단에 우선 반영해줘: " : "설명: ") + text : "사진을 보고 음식을 알아봐줘."}
 사진에 영양성분표가 있으면 그 숫자를 그대로 써. 없으면 설명한 양(없으면 1인분) 기준으로 추정해서 JSON 하나만 답해:
 {"name":"음식 이름(짧게)","kcal":숫자,"protein":숫자(g),"carb":숫자(g),"fat":숫자(g),"sodium":숫자(mg),"note":"이 음식 기준으로 부족하거나 주의할 점 한 줄"}`;
   const opts = {}; if (photo) opts.images = [photo];
