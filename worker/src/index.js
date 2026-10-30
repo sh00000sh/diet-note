@@ -39,7 +39,7 @@ export default {
       }
       return json({ code: "not_found" }, 404, cors);
     } catch (e) {
-      return json({ code: "server_error", message: String(e && e.message || e) }, 500, cors);
+      return json({ code: (e && e.code) || "server_error", message: String(e && e.message || e) }, 500, cors);
     }
   },
 
@@ -94,7 +94,20 @@ async function askClaude(env, prompt, image) {
     headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({ model: env.AI_MODEL || DEFAULT_MODEL, max_tokens: 800, messages: [{ role: "user", content }] }),
   });
-  if (!res.ok) throw new Error(`claude ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    const t = await res.text();
+    let type = "", msg = "";
+    try { const j = JSON.parse(t); type = j.error?.type || ""; msg = j.error?.message || ""; } catch {}
+    const e = new Error(
+      /credit balance/i.test(msg) ? "Claude API 크레딧이 부족해요. console.anthropic.com → Billing에서 충전해 주세요" :
+      type === "authentication_error" ? "Claude API 키가 잘못됐어요. GitHub Secrets의 ANTHROPIC_API_KEY를 확인해 주세요" :
+      type === "permission_error" ? "Claude API 키 권한이 없어요" :
+      type === "not_found_error" ? "AI 모델 이름이 잘못됐어요 (" + msg.slice(0, 80) + ")" :
+      type === "overloaded_error" || res.status === 529 ? "AI가 지금 붐벼요. 잠시 후 다시 해보세요" :
+      type === "rate_limit_error" ? "AI 요청이 너무 많아요. 잠시 후 다시 해보세요" :
+      `AI 오류 ${res.status}: ${(msg || t).slice(0, 160)}`);
+    e.code = "ai_error"; throw e;
+  }
   const out = await res.json();
   return (out.content || []).filter(c => c.type === "text").map(c => c.text).join("").trim();
 }

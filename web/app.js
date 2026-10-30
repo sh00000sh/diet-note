@@ -1740,7 +1740,13 @@ const sbc = HAS_SERVER ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPA
 let session = null;
 
 function aiOffMsg(){ return !HAS_SERVER ? "AI 계산은 서버 설정이 끝나면 쓸 수 있어요" : !session ? "로그인하면 AI 계산을 쓸 수 있어요" : !CFG.WORKER_URL ? "AI 서버 주소가 아직 설정되지 않았어요" : "AI 계산을 쓸 수 없어요"; }
-function aiErrMsg(e, fallback){ return e && e.code === "rate_limited" ? "오늘 AI 사용 한도를 다 썼어요. 내일 다시 써주세요" : e && e.code === "not_signed_in" ? "다시 로그인해 주세요" : fallback; }
+function aiErrMsg(e, fallback){
+  if (e && e.code === "rate_limited") return "오늘 AI 사용 한도를 다 썼어요. 내일 다시 써주세요";
+  if (e && e.code === "not_signed_in") return "다시 로그인해 주세요";
+  if (e && e.code === "network") return "AI 서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요";
+  if (e && e.message) return fallback.replace(/\. 잠시 후 다시 해보세요$/, "") + " · " + e.message;   // 서버가 알려준 진짜 이유를 같이 보여주기
+  return fallback;
+}
 
 // 사진은 긴 변 1280px JPEG로 줄여서 보내요 (빠르고 저렴하게)
 function shrinkImage(file){
@@ -1759,11 +1765,15 @@ function shrinkImage(file){
 async function callAI(path, prompt, images){
   const body = { prompt };
   if (images && images[0]) body.image = await shrinkImage(images[0]);
-  const res = await fetch(CFG.WORKER_URL.replace(/\/$/, "") + path, {
-    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + session.access_token }, body: JSON.stringify(body),
-  });
+  const { data: fresh } = await sbc.auth.getSession(); if (fresh && fresh.session) session = fresh.session;   // 만료된 로그인 토큰 방지
+  let res;
+  try {
+    res = await fetch(CFG.WORKER_URL.replace(/\/$/, "") + path, {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + session.access_token }, body: JSON.stringify(body),
+    });
+  } catch { throw { code: "network" }; }
   const out = await res.json().catch(() => ({}));
-  if (!res.ok) throw { code: out.code || "unavailable", message: out.message };
+  if (!res.ok) throw { code: out.code || "unavailable", message: out.message || ("서버 응답 " + res.status) };
   return out;
 }
 function makeSample(){
