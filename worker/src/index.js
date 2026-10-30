@@ -46,6 +46,7 @@ export default {
 };
 
 // ---------- 공통 ----------
+const baseUrl = env => String(env.SUPABASE_URL || "").trim().replace(/\/(rest|auth)\/v1\/?$/, "").replace(/\/+$/, "");
 function corsHeaders(req, env) {
   const origin = req.headers.get("Origin") || "";
   const allow = (env.ALLOWED_ORIGIN || "*").split(",").map(s => s.trim());
@@ -55,7 +56,7 @@ function corsHeaders(req, env) {
 function json(obj, status, headers) { return new Response(JSON.stringify(obj), { status, headers: { ...headers, "content-type": "application/json; charset=utf-8" } }); }
 
 async function sb(env, path, init = {}) {
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
+  const res = await fetch(`${baseUrl(env)}/rest/v1/${path}`, {
     ...init,
     headers: { apikey: env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`, "content-type": "application/json", ...(init.headers || {}) },
   });
@@ -66,7 +67,7 @@ async function sb(env, path, init = {}) {
 async function verifyUser(req, env) {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return null;
-  const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { apikey: env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${token}` } });
+  const res = await fetch(`${baseUrl(env)}/auth/v1/user`, { headers: { apikey: env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${token}` } });
   if (!res.ok) return null;
   const u = await res.json();
   return u && u.id ? u : null;

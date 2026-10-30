@@ -1697,7 +1697,9 @@ function checkOnboarding(){ if (onbChecked) return; onbChecked = true; if (needs
 function render(full){ renderMeal(); renderHome(); renderWorkout(full); if (typeof renderNotify === "function") renderNotify(); }
 
 // ================= 웹앱: 로그인 · 저장 · AI · 알림 =================
-const CFG = window.DIET_CONFIG || {};
+const CFG = { ...(window.DIET_CONFIG || {}) };
+// 대시보드에서 주소를 복사할 때 뒤에 /rest/v1/ 이 붙어 와도 괜찮게
+if (CFG.SUPABASE_URL) CFG.SUPABASE_URL = CFG.SUPABASE_URL.trim().replace(/\/(rest|auth)\/v1\/?$/, "").replace(/\/+$/, "");
 const HAS_SERVER = !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase);
 const sbc = HAS_SERVER ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, { auth: { flowType: "implicit", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
 let session = null;
