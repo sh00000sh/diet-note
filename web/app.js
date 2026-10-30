@@ -536,7 +536,7 @@ $("bPhoto").onchange = async () => {
     $("bWeight").value = w; $("bSmm").value = smm ?? ""; $("bBf").value = bf ?? "";
     if (typeof r.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date <= keyOf(new Date())) $("bDate").value = r.date;
     const got = ["체중", smm != null && "골격근량", bf != null && "체지방률"].filter(Boolean).join("·");
-    st.textContent = `사진에서 ${got}을 읽었어요 · 숫자가 맞는지 확인하고 기록하기를 눌러주세요`;
+    st.textContent = `사진에서 ${josa(got, "을", "를")} 읽었어요 · 숫자가 맞는지 확인하고 기록하기를 눌러주세요`;
   } catch (e) { st.textContent = aiErrMsg(e, "결과지를 읽지 못했어요. 잠시 후 다시 해보세요"); }
   finally { aiBusy = false; }
 };
@@ -1142,6 +1142,14 @@ function renderExList(){
 
 }
 
+// 받침에 맞춰 조사 붙이기: josa("하체", "은", "는") → "하체는"
+function josa(w, a, b){
+  w = String(w || ""); const c = w.charCodeAt(w.length - 1);
+  if (!(c >= 0xAC00 && c <= 0xD7A3)) return w + b;
+  const jong = (c - 0xAC00) % 28;
+  if (a === "으로") return w + (jong === 0 || jong === 8 ? "로" : "으로");   // ㄹ 받침은 '로'
+  return w + (jong ? a : b);
+}
 // ---------- 다음 운동 추천 ----------
 const MAIN_PARTS = ["가슴", "등", "어깨", "하체", "팔"];
 function allDayKeys(){
@@ -1174,10 +1182,10 @@ function renderNext(){
     main = "복근";
   } else {
     const partner = (COMBOS[main]?.with || []).find(p => p === "복근" || ready.includes(p));
-    const g = gap(main), restTxt = g === Infinity ? "은 아직 기록이 없어요" : `은 ${g}일째 쉬고 있어요`;
+    const g = gap(main), restTxt = g === Infinity ? " 아직 기록이 없어요" : ` ${g}일째 쉬고 있어요`;
     if (workedToday) {
       $("nextMain").innerHTML = `내일은 <em>${main}${partner ? " + " + partner : ""}</em>`;
-      $("nextWhy").textContent = `오늘 ${todayParts.join(", ")} 했으니까 ${main}${restTxt}. ${COMBOS[main]?.why || ""}`;
+      $("nextWhy").textContent = `오늘 ${todayParts.join(", ")} 했으니까 ${josa(main, "은", "는")}${restTxt}. ${COMBOS[main]?.why || ""}`;
     } else if (todayParts.length) {
       // 운동 중: 지금 하는 부위 기준으로 같이 하면 좋은 부위 추천
       const now = todayParts[0], add = (COMBOS[now]?.with || []).find(p => !todayParts.includes(p) && (p === "복근" || gap(p) >= 2));
@@ -1187,7 +1195,7 @@ function renderNext(){
       main = add || "유산소";
     } else {
       $("nextMain").innerHTML = `오늘은 <em>${main}${partner ? " + " + partner : ""}</em> 해보는 거 어때요?`;
-      $("nextWhy").textContent = `${main}${restTxt}. ${COMBOS[main]?.why || ""}`;
+      $("nextWhy").textContent = `${josa(main, "은", "는")}${restTxt}. ${COMBOS[main]?.why || ""}`;
     }
   }
   $("nextGo").hidden = !main;
@@ -1983,7 +1991,7 @@ async function startApp(){
   sample = CFG.WORKER_URL ? makeSample() : null;
   const via = PROVIDER_NAME[session.user.user_metadata?.provider === "naver" ? "naver" : session.user.app_metadata?.provider] || "";
   const who = session.user.user_metadata?.name || session.user.user_metadata?.nickname || session.user.user_metadata?.full_name || "";
-  $("acctName").textContent = `${via ? via + " 계정" : "계정"}${who ? " · " + who : ""}으로 로그인됨`;
+  $("acctName").textContent = josa(`${via ? via + " 계정" : "계정"}${who ? " · " + who : ""}`, "으로", "로") + " 로그인됨";
   $("logoutBtn").hidden = false;
   attachStore();
 }
