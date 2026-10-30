@@ -1880,6 +1880,10 @@ $("naverBtn").onclick = () => {
   $("loginMsg").textContent = "네이버로 이동하는 중이에요…";
   location.href = CFG.WORKER_URL.replace(/\/$/, "") + "/auth/naver/start?redirect=" + encodeURIComponent(location.origin + location.pathname);
 };
+// 홈 화면 앱에는 주소를 붙일 수 없어서: 로그인 화면 로고를 5번 누르면 네이버 버튼이 보여요 (관리자용)
+{ let taps = 0, t = 0; const logo = document.querySelector("#login .gate-logo");
+  if (logo) logo.addEventListener("click", () => { clearTimeout(t); t = setTimeout(() => taps = 0, 1500);
+    if (++taps >= 5) { taps = 0; try { localStorage.setItem("meal-note:naver", "1"); } catch {} showEnabledLogins(); toast("네이버 로그인 버튼을 켰어요"); } }); }
 // Supabase에서 켠 로그인만 버튼 보여주기
 async function showEnabledLogins(){
   try {
@@ -1888,7 +1892,10 @@ async function showEnabledLogins(){
     $("googleBtn").hidden = !ext.google;
   } catch {}
   try {
-    if (CFG.WORKER_URL) { const n = await (await fetch(CFG.WORKER_URL.replace(/\/$/, "") + "/auth/naver/enabled")).json(); $("naverBtn").hidden = !n.enabled; }
+    // 네이버는 검수 전이라 관리자·테스터만 로그인돼요 → 평소엔 숨기고, 주소 뒤에 ?naver=1 을 붙이면 보여요
+    let showNaver = /[?&]naver=1/.test(location.search);
+    try { if (showNaver) localStorage.setItem("meal-note:naver", "1"); else showNaver = localStorage.getItem("meal-note:naver") === "1"; } catch {}
+    if (CFG.WORKER_URL && showNaver) { const n = await (await fetch(CFG.WORKER_URL.replace(/\/$/, "") + "/auth/naver/enabled")).json(); $("naverBtn").hidden = !n.enabled; }
   } catch {}
 }
 $("localBtn").onclick = () => { try { localStorage.setItem("meal-note:local", "1"); } catch {} $("login").hidden = true; runLocal(); };
