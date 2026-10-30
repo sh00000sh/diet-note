@@ -510,6 +510,28 @@ $("bAdd").onclick = () => {
   $("bStatus").textContent = `${shortDate(date)} 기록했어요 · 하루 목표도 새로 맞췄어요`;
   saveProfile();
 };
+$("bPhoto").onchange = async () => {
+  const f = $("bPhoto").files[0]; $("bPhoto").value = ""; if (!f) return;
+  const st = $("bStatus");
+  if (!sample) { st.textContent = aiOffMsg() + " · 아래 칸에 직접 적어주세요"; return; }
+  if (aiBusy) return; aiBusy = true; st.textContent = "인바디 결과지를 읽는 중이에요…";
+  try {
+    const r = await sample.json(`이 사진은 인바디(InBody) 같은 체성분 검사 결과지야. 아래 값을 읽어서 JSON 하나만 답해줘. 다른 말은 쓰지 마.
+{"date":"YYYY-MM-DD 또는 null (측정 날짜·일시)","weight":체중 kg 숫자 또는 null,"smm":골격근량 kg 숫자 또는 null,"bf":체지방률 % 숫자 또는 null,"ok":결과지가 맞고 숫자를 읽었으면 true}
+- 체지방률은 '체지방률'(PBF, %) 값이야. 체지방량(kg)과 헷갈리지 마.
+- 골격근량은 '골격근량'(SMM, kg) 값이야. 근육량·제지방량과 헷갈리지 마.
+- 표준 범위나 그래프 눈금이 아니라 '측정값'을 읽어.
+- 안 보이거나 확실하지 않은 값은 null.`, { images: [f] });
+    const num = (v, lo, hi) => { const n = +v; return v != null && n >= lo && n <= hi ? Math.round(n * 10) / 10 : null; };
+    const w = num(r.weight, 30, 250), smm = num(r.smm, 10, 80), bf = num(r.bf, 3, 70);
+    if (!r.ok || w == null) { st.textContent = "결과지에서 체중을 찾지 못했어요. 숫자가 잘 보이게 다시 찍거나 직접 적어주세요"; return; }
+    $("bWeight").value = w; $("bSmm").value = smm ?? ""; $("bBf").value = bf ?? "";
+    if (typeof r.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date <= keyOf(new Date())) $("bDate").value = r.date;
+    const got = ["체중", smm != null && "골격근량", bf != null && "체지방률"].filter(Boolean).join("·");
+    st.textContent = `사진에서 ${got}을 읽었어요 · 숫자가 맞는지 확인하고 기록하기를 눌러주세요`;
+  } catch (e) { st.textContent = aiErrMsg(e, "결과지를 읽지 못했어요. 잠시 후 다시 해보세요"); }
+  finally { aiBusy = false; }
+};
 $("pSave").onclick = () => {
   const h = +$("pHeight").value, a = +$("pAge").value;
   if (!(h >= 120 && h <= 230) || !(a >= 10 && a <= 100)) { $("pStatus").textContent = "키와 나이를 확인해 주세요"; return; }
