@@ -54,3 +54,13 @@ begin
   return c <= p_max;
 end $$;
 revoke all on function public.bump_ai_usage(uuid, date, int) from public, anon, authenticated;
+
+-- 4) 권한 ('Automatically expose new tables' 를 끈 경우에 필요 · 켠 경우에도 그대로 실행해도 괜찮아요)
+--    로그인한 사람(authenticated)만 내 기록·알림 표에 접근 · 로그인 안 한 사람(anon)은 아무것도 못 봄
+--    서버(service_role)는 알림 보내기·AI 사용량 기록에 씀
+revoke all on public.docs, public.push_subs, public.ai_usage from anon;
+revoke all on public.ai_usage from authenticated;
+grant select, insert, update, delete on public.docs      to authenticated;
+grant select, insert, update, delete on public.push_subs to authenticated;
+grant all on public.docs, public.push_subs, public.ai_usage to service_role;
+grant execute on function public.bump_ai_usage(uuid, date, int) to service_role;
