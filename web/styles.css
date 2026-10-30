@@ -450,3 +450,19 @@ body.resting .fab{bottom:calc(158px + env(safe-area-inset-bottom,0px))}
 html.pre,html.pre body{height:100%;overflow:hidden;overscroll-behavior:none}
 html.pre .wrap,html.pre .tabbar,html.pre .fab{visibility:hidden}
 .gate,.login,.boot{overscroll-behavior:contain;padding-top:0}
+
+/* ---------- 오른쪽 위 버튼 · 설정 화면 ---------- */
+.wrap{position:relative}
+.top-actions{position:absolute;top:14px;right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px;z-index:2}
+.page-head{padding-right:96px}
+.icon-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--fg2);flex:none}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn .i-sun{display:none}
+:root[data-theme="dark"] .icon-btn .i-sun{display:block}
+:root[data-theme="dark"] .icon-btn .i-moon{display:none}
+.settings{position:fixed;inset:0;z-index:55;background:var(--bg);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.set-in{max-width:520px;margin:0 auto;display:grid;gap:12px;padding-block:14px calc(32px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.set-head{display:flex;align-items:center;gap:10px;margin:0 0 4px}
+.set-head .page-title{margin:0}
+.set-foot{text-align:center;color:var(--muted);font-size:.8rem;margin:8px 0 0}

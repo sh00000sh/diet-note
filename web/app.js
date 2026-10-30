@@ -535,8 +535,10 @@ $("bPhoto").onchange = async () => {
   finally { aiBusy = false; }
 };
 $("pSave").onclick = () => {
-  const h = +$("pHeight").value, a = +$("pAge").value;
+  const h = +$("pHeight").value, a = +$("pAge").value, nn = $("pName").value.trim();
+  if (!nn || nn.length > 12) { $("pStatus").textContent = "닉네임을 12자 이내로 적어주세요"; return; }
   if (!(h >= 120 && h <= 230) || !(a >= 10 && a <= 100)) { $("pStatus").textContent = "키와 나이를 확인해 주세요"; return; }
+  profile.nickname = nn;
   profile.height = h; profile.age = a; profile.sex = $("pSex").value;
   profile.goal = document.querySelector('input[name="goal"]:checked')?.value || "cut";
   const burn = Math.round(+$("pBurn").value || 0);
@@ -1691,7 +1693,7 @@ $("onbNext").onclick = () => {
 };
 $("onbSkip").onclick = () => { onb.age = ""; onb.step++; drawOnb(); };
 $("onbBack").onclick = () => { if (onb.step > 0) { onb.step--; drawOnb(); } };
-$("redoOnb").onclick = () => openOnboarding();
+$("redoOnb").onclick = () => { closeSettings(); openOnboarding(); };
 let onbChecked = false;
 function checkOnboarding(){ if (onbChecked) return; onbChecked = true; if (needsOnboarding()) openOnboarding(); }
 
@@ -1946,7 +1948,7 @@ function maybeAskPush(){
   const p = document.createElement("p"); p.className = "status";
   p.textContent = "물 마실 시간, 점심·저녁 기록, 운동 갈 시간을 알려드려요. 기록을 이미 했으면 알림이 안 와요";
   const ok = document.createElement("button"); ok.className = "btn primary"; ok.textContent = "알림 켜기";
-  ok.onclick = async () => { try { await enablePush(); toast("알림을 켰어요 · 홈에서 시간을 바꿀 수 있어요"); } catch (e) { toast(e.message); } close(); renderNotify(); };
+  ok.onclick = async () => { try { await enablePush(); toast("알림을 켰어요 · 설정에서 시간을 바꿀 수 있어요"); } catch (e) { toast(e.message); } close(); renderNotify(); };
   const no = document.createElement("button"); no.className = "btn"; no.textContent = "나중에"; no.onclick = close;
   sh.append(p, ok, no);
 }
@@ -1971,6 +1973,35 @@ $("importFile").onchange = async e => {
     current = new Date(); openDay(); toast(`기록 ${docs.length}개를 가져왔어요`);
   } catch (err) { toast("가져오지 못했어요: " + (err.message || err)); }
 };
+
+
+// ---------- 테마 (기본 라이트 · 오른쪽 위 버튼으로 다크) ----------
+function applyTheme(t){
+  t = t === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("meal-note:theme", t); } catch {}
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || (t === "dark" ? "#101113" : "#ffffff");
+  $("themeColor").setAttribute("content", bg);
+  $("themeBtn").setAttribute("aria-label", t === "dark" ? "라이트 모드로 보기" : "다크 모드로 보기");
+  $("darkSw").checked = t === "dark";
+}
+applyTheme(document.documentElement.dataset.theme);
+$("themeBtn").onclick = () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+$("darkSw").onchange = () => applyTheme($("darkSw").checked ? "dark" : "light");
+
+// ---------- 설정 화면 ----------
+function openSettings(){
+  $("pName").value = profile.nickname || "";
+  $("pStatus").textContent = "";
+  $("setGoal").textContent = GOALS[profile.goal] || "";
+  $("settings").hidden = false; $("settings").scrollTop = 0; document.body.style.overflow = "hidden";
+  if (typeof renderNotify === "function") renderNotify();
+}
+function closeSettings(){ $("settings").hidden = true; document.body.style.overflow = ""; }
+$("settingsBtn").onclick = openSettings;
+$("setClose").onclick = closeSettings;
+document.querySelectorAll("[data-open-settings]").forEach(b => b.onclick = openSettings);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("settings").hidden) closeSettings(); });
 
 // ---------- 시작 ----------
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
