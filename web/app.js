@@ -1866,7 +1866,7 @@ $("gateInstall").onclick = async () => { if (!installEvt) return; installEvt.pro
 $("gateBrowser").onclick = () => { try { localStorage.setItem("meal-note:skipGate", "1"); } catch {} $("gate").hidden = true; startApp(); };
 
 // ---------- 로그인 ----------
-const PROVIDER_NAME = { kakao: "카카오", google: "Google" };
+const PROVIDER_NAME = { kakao: "카카오", google: "Google", naver: "네이버" };
 async function oauthLogin(provider, scopes){
   $("loginMsg").textContent = `${PROVIDER_NAME[provider] || ""}로 이동하는 중이에요…`;
   const options = { redirectTo: location.origin + location.pathname };
@@ -1876,12 +1876,19 @@ async function oauthLogin(provider, scopes){
 }
 $("kakaoBtn").onclick = () => oauthLogin("kakao", "profile_nickname profile_image");
 $("googleBtn").onclick = () => oauthLogin("google");
+$("naverBtn").onclick = () => {
+  $("loginMsg").textContent = "네이버로 이동하는 중이에요…";
+  location.href = CFG.WORKER_URL.replace(/\/$/, "") + "/auth/naver/start?redirect=" + encodeURIComponent(location.origin + location.pathname);
+};
 // Supabase에서 켠 로그인만 버튼 보여주기
 async function showEnabledLogins(){
   try {
     const r = await fetch(CFG.SUPABASE_URL + "/auth/v1/settings", { headers: { apikey: CFG.SUPABASE_ANON_KEY } });
     const ext = (await r.json()).external || {};
     $("googleBtn").hidden = !ext.google;
+  } catch {}
+  try {
+    if (CFG.WORKER_URL) { const n = await (await fetch(CFG.WORKER_URL.replace(/\/$/, "") + "/auth/naver/enabled")).json(); $("naverBtn").hidden = !n.enabled; }
   } catch {}
 }
 $("localBtn").onclick = () => { try { localStorage.setItem("meal-note:local", "1"); } catch {} $("login").hidden = true; runLocal(); };
@@ -1927,7 +1934,7 @@ async function startApp(){
   $("login").hidden = true;
   db = makeDb();
   sample = CFG.WORKER_URL ? makeSample() : null;
-  const via = PROVIDER_NAME[session.user.app_metadata?.provider] || "";
+  const via = PROVIDER_NAME[session.user.user_metadata?.provider === "naver" ? "naver" : session.user.app_metadata?.provider] || "";
   const who = session.user.user_metadata?.name || session.user.user_metadata?.nickname || session.user.user_metadata?.full_name || "";
   $("acctName").textContent = `${via ? via + " 계정" : "계정"}${who ? " · " + who : ""}으로 로그인됨`;
   $("logoutBtn").hidden = false;

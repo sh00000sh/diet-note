@@ -73,3 +73,17 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
           ALLOWED_ORIGIN: ${{ vars.ALLOWED_ORIGIN }}
+      - name: 네이버 로그인 키 (넣은 경우에만)
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NAVER_CLIENT_ID: ${{ vars.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: |
+          if [ -n "$NAVER_CLIENT_ID" ] && [ -n "$NAVER_CLIENT_SECRET" ]; then
+            printf '%s' "$NAVER_CLIENT_ID" | npx wrangler secret put NAVER_CLIENT_ID
+            printf '%s' "$NAVER_CLIENT_SECRET" | npx wrangler secret put NAVER_CLIENT_SECRET
+          else
+            echo "네이버 키가 없어서 건너뛰어요"
+          fi

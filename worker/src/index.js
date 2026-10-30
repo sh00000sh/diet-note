@@ -12,6 +12,9 @@ export default {
     const url = new URL(req.url);
     try {
       if (url.pathname === "/health") return json({ ok: true }, 200, cors);
+      if (url.pathname === "/auth/naver/enabled") return json({ enabled: !!(env.NAVER_CLIENT_ID && env.NAVER_CLIENT_SECRET) }, 200, cors);
+      if (url.pathname === "/auth/naver/start") return naverStart(req, env);
+      if (url.pathname === "/auth/naver/callback") return naverCallback(req, env);
       if (req.method === "POST" && (url.pathname === "/ai/json" || url.pathname === "/ai/text")) {
         const user = await verifyUser(req, env);
         if (!user) return json({ code: "not_signed_in", message: "로그인이 필요해요" }, 401, cors);
@@ -182,4 +185,75 @@ async function push(env, s, payload) {
   const res = await sendPushNotification(vapidCache, { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, env.VAPID_EMAIL || "diet-note@example.com", JSON.stringify(payload), { algorithm: "aes128gcm", ttl: 3600, urgency: "normal" });
   if (res.status === 404 || res.status === 410) return "gone";
   return res.ok;
+}
+
+// ---------- 네이버 로그인 ----------
+// Supabase 기본 목록에 네이버가 없어서, 서버가 네이버 로그인을 대신 처리한 뒤
+// Supabase 1회용 로그인 링크로 앱에 넘겨줘요. 앱은 카카오·구글 때와 똑같이 #access_token 을 받아요.
+const enc = new TextEncoder();
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64uDecode = s => atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4));
+async function hmac(env, data){
+  const key = await crypto.subtle.importKey("raw", enc.encode("naver-state:" + env.NAVER_CLIENT_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return b64u(await crypto.subtle.sign("HMAC", key, enc.encode(data)));
+}
+function allowedRedirect(env, r){
+  try {
+    const u = new URL(r);
+    const origins = (env.ALLOWED_ORIGIN || "").split(",").map(x => x.trim()).filter(Boolean);
+    return u.protocol === "https:" && origins.includes(u.origin) ? u.origin + u.pathname : null;
+  } catch { return null; }
+}
+const backWithError = (to, msg) => Response.redirect(`${to}#error=naver_login&error_description=${encodeURIComponent(msg)}`, 302);
+
+async function naverStart(req, env){
+  const url = new URL(req.url);
+  const to = allowedRedirect(env, url.searchParams.get("redirect") || "");
+  if (!to) return new Response("잘못된 요청이에요", { status: 400 });
+  if (!env.NAVER_CLIENT_ID || !env.NAVER_CLIENT_SECRET) return backWithError(to, "네이버 로그인이 아직 설정되지 않았어요");
+  const payload = b64u(enc.encode(JSON.stringify({ r: to, t: Date.now(), n: crypto.randomUUID() })));
+  const state = payload + "." + await hmac(env, payload);
+  const q = new URLSearchParams({ response_type: "code", client_id: env.NAVER_CLIENT_ID, redirect_uri: `${url.origin}/auth/naver/callback`, state });
+  return Response.redirect("https://nid.naver.com/oauth2.0/authorize?" + q, 302);
+}
+
+async function naverCallback(req, env){
+  const url = new URL(req.url);
+  const state = url.searchParams.get("state") || "";
+  const [payload, sig] = state.split(".");
+  let st = null;
+  try { if (payload && sig && sig === await hmac(env, payload)) st = JSON.parse(b64uDecode(payload)); } catch {}
+  const to = st && allowedRedirect(env, st.r);
+  if (!to || Date.now() - st.t > 10 * 60 * 1000) return new Response("로그인 시간이 지났어요. 앱에서 다시 시도해 주세요", { status: 400, headers: { "content-type": "text/plain; charset=utf-8" } });
+  if (url.searchParams.get("error")) return backWithError(to, "네이버 로그인을 취소했어요");
+  const code = url.searchParams.get("code");
+  if (!code) return backWithError(to, "네이버에서 로그인 정보를 받지 못했어요");
+  try {
+    // 1) 코드 → 네이버 토큰
+    const tr = await fetch("https://nid.naver.com/oauth2.0/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "authorization_code", client_id: env.NAVER_CLIENT_ID, client_secret: env.NAVER_CLIENT_SECRET, code, state }) });
+    const tok = await tr.json();
+    if (!tok.access_token) return backWithError(to, "네이버 로그인에 실패했어요 (" + (tok.error_description || tok.error || tr.status) + ")");
+    // 2) 네이버 프로필
+    const pr = await fetch("https://openapi.naver.com/v1/nid/me", { headers: { Authorization: "Bearer " + tok.access_token } });
+    const me = await pr.json();
+    const p = me && me.response;
+    if (!p || !p.id) return backWithError(to, "네이버 프로필을 가져오지 못했어요");
+    // 3) Supabase 계정 (네이버 고유번호로 만든 전용 주소 · 실제 메일은 보내지 않음)
+    const idHash = b64u(await crypto.subtle.digest("SHA-256", enc.encode("naver:" + p.id))).slice(0, 24).toLowerCase().replace(/[^a-z0-9]/g, "x");
+    const email = `naver-${idHash}@users.diet-note.app`;
+    const meta = { name: p.nickname || p.name || "", nickname: p.nickname || "", full_name: p.name || "", avatar_url: p.profile_image || "", provider: "naver", naver_email: p.email || "" };
+    const admin = (path, body) => fetch(`${baseUrl(env)}/auth/v1/admin/${path}`, { method: "POST",
+      headers: { apikey: env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`, "content-type": "application/json" }, body: JSON.stringify(body) });
+    const cr = await admin("users", { email, email_confirm: true, user_metadata: meta, app_metadata: { provider: "naver", providers: ["naver"] } });
+    if (!cr.ok && cr.status !== 422) return backWithError(to, "계정을 만들지 못했어요 (" + cr.status + ")");
+    // 4) 1회용 로그인 링크 → 앱으로
+    const lr = await admin("generate_link", { type: "magiclink", email, redirect_to: to });
+    const link = await lr.json();
+    const action = link.action_link || (link.properties && link.properties.action_link);
+    if (!action) return backWithError(to, "로그인 링크를 만들지 못했어요");
+    return Response.redirect(action, 302);
+  } catch (e) {
+    return backWithError(to, "네이버 로그인 중 문제가 생겼어요");
+  }
 }
