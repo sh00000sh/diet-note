@@ -445,3 +445,8 @@ body.resting .fab{bottom:calc(158px + env(safe-area-inset-bottom,0px))}
 .nt-days span{display:grid;place-items:center;height:36px;border-radius:10px;background:var(--fill);color:var(--muted);font-weight:700;font-size:.88rem;cursor:pointer}
 .nt-days input:checked + span{background:var(--accent);color:var(--onaccent)}
 .nt-days input:focus-visible + span{outline:2px solid var(--accent)}
+
+/* 로그인 전(첫 안내·로그인 화면)에는 뒤쪽 앱을 숨기고 화면이 튕기지 않게 */
+html.pre,html.pre body{height:100%;overflow:hidden;overscroll-behavior:none}
+html.pre .wrap,html.pre .tabbar,html.pre .fab{visibility:hidden}
+.gate,.login,.boot{overscroll-behavior:contain;padding-top:0}

@@ -1777,8 +1777,10 @@ function attachStore(){
   });
 }
 let loadedOnce = false;
+function showApp(){ document.documentElement.classList.remove("pre"); }
 function afterLoad(){
   if (loadedOnce) return; loadedOnce = true;
+  showApp();
   $("boot").hidden = true;
   if (!profile.nickname && session) {
     const m = session.user.user_metadata || {};
@@ -1839,6 +1841,7 @@ $("kakaoBtn").onclick = async () => {
 $("localBtn").onclick = () => { try { localStorage.setItem("meal-note:local", "1"); } catch {} $("login").hidden = true; runLocal(); };
 
 function runLocal(){
+  showApp();
   db = null; sample = null;
   $("saveStatus").textContent = "이 기기에만 저장돼요 · 로그인하면 다른 폰에서도 이어서 써요";
   $("boot").hidden = true; openDay(); render(true);
