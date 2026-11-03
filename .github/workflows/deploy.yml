@@ -77,7 +77,7 @@ jobs:
         run: |
           # 실패하면 이유를 GitHub 화면(요약)에 보이게
           run() {
-            out=$("$@" 2>&1); code=$?
+            if out=$("$@" 2>&1); then code=0; else code=$?; fi
             echo "$out"
             if [ $code -ne 0 ]; then echo "::error::$(echo "$out" | grep -v '^[[:space:]]*$' | tail -15 | tr '\n' ' ' | cut -c1-1500)"; exit $code; fi
           }
