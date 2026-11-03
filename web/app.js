@@ -65,6 +65,14 @@ const LEGACY = {
   nuts: { name: "구운아몬드 20알", sub: "25g", kcal: 150, protein: 6, carb: 6, fat: 12, sodium: 0, meal: "etc" },
 };
 const PRESET = Object.fromEntries(MEALS.flatMap(m => m.items.map(i => [i.id, i])));
+// 내 음식: 사람마다 자주 먹는 메뉴 (profile.myFoods) · 먹은 거 기록하기 맨 위에 떠요
+const myFoods = () => Array.isArray(profile?.myFoods) ? profile.myFoods : [];
+const newFoodId = () => "my-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function saveMyFood(it){
+  const list = myFoods().filter(x => x.name !== it.name);
+  profile.myFoods = [...list, { id: it.id || newFoodId(), name: it.name, sub: it.sub || "", kcal: Math.round(+it.kcal || 0), protein: +it.protein || 0, carb: +it.carb || 0, fat: +it.fat || 0, sodium: Math.round(+it.sodium || 0), meal: it.meal || "etc" }];
+  saveProfile();
+}
 const PRESET_IDS = PRESET;
 
 // ---------- 운동 목록 ----------
@@ -682,6 +690,7 @@ function openPickSheet(meal){
   const { sh, close } = makeSheet(`${mealTitle(meal)}에 먹은 거`);
   const own = MEALS.find(m => m.key === meal)?.items || [];
   const others = Object.values(PRESET).filter(it => !own.includes(it));
+  const mine = myFoods().filter(x => x.meal === meal), mineOther = myFoods().filter(x => x.meal !== meal);
   const draw = () => {
     sh.querySelectorAll(".pick, .sub-h, .btn.done").forEach(n => n.remove());
     const group = (label, list) => {
@@ -705,6 +714,9 @@ function openPickSheet(meal){
         row.append(t, st); sh.appendChild(row);
       }
     };
+    group("내 음식", mine);
+    group("내 음식 · 다른 끼니", mineOther);
+    if (!myFoods().length) { const h = document.createElement("p"); h.className = "sub-h"; h.style.fontWeight = "500"; h.textContent = "자주 먹는 건 설정 → 내 음식에 저장하면 여기 맨 위에 떠요"; sh.appendChild(h); }
     group("이 끼니 기본 식단", own);
     group("다른 음식", others);
     const done = document.createElement("button"); done.className = "btn primary done"; done.style.marginTop = "10px"; done.textContent = "완료"; done.onclick = close;
@@ -840,7 +852,15 @@ function extraRow(x, i){
   const del = document.createElement("button"); del.className = "del"; del.setAttribute("aria-label", x.name + " 삭제"); del.textContent = "×";
   del.onclick = () => { day.extras.splice(i, 1); render(); scheduleSave(); };
   wrap.append(lb); if (more) wrap.append(more);
-  row.append(wrap, metaEl(x), del);
+  const isPreset = x.pid && (PRESET[x.pid] || myFoods().some(f => f.id === x.pid));
+  const saved = myFoods().some(f => f.name === x.name);
+  if (!isPreset) {
+    const star = document.createElement("button"); star.className = "star" + (saved ? " on" : "");
+    star.setAttribute("aria-label", saved ? x.name + " 내 음식에 저장됨" : x.name + " 내 음식으로 저장"); star.textContent = saved ? "★" : "☆";
+    star.onclick = ev => { ev.stopPropagation(); if (saved) { toast("이미 내 음식에 있어요 · 설정에서 지울 수 있어요"); return; }
+      saveMyFood({ name: x.name, sub: x.sub || "", kcal: x.kcal, protein: x.protein, carb: x.carb, fat: x.fat, sodium: x.sodium, meal: x.meal }); render(); toast(`${x.name} 내 음식에 저장했어요`); };
+    row.append(wrap, metaEl(x), star, del);
+  } else row.append(wrap, metaEl(x), del);
   row.dataset.kind = "extra"; row.dataset.idx = i; row.classList.add("draggable");
   return row;
 }
@@ -2086,11 +2106,20 @@ $("importFile").onchange = async e => {
   try {
     const j = JSON.parse(await f.text()); const docs = j.docs || [];
     if (!docs.length) throw new Error("기록이 없는 파일이에요");
+    let addedFoods = 0;
     for (const d of docs) {
-      if (d.id === "profile") { profile = { ...DEFAULT_PROFILE, ...profile, ...d.data, nickname: profile.nickname || d.data.nickname }; await saveProfile(); }
+      if (d.id === "profile") {
+        const inc = d.data || {}, foods = Array.isArray(inc.myFoods) ? inc.myFoods : [];
+        const merged = [...myFoods().filter(x => !foods.some(f => f.name === x.name)), ...foods];
+        profile = { ...DEFAULT_PROFILE, ...profile, ...inc, nickname: profile.nickname || inc.nickname, myFoods: merged };
+        if (foods.length) addedFoods = foods.length;
+        await saveProfile();
+      }
       else if (isDayKey(d.id)) { const c = cleanDay(d.data); saveLocal(d.id, c); cache[d.id] = { ...c, totals: totalsOf(c) }; if (userCol()) await userCol().doc(d.id).set({ ...c, date: d.id, totals: totalsOf(c), updatedAt: Date.now() }); }
     }
-    current = new Date(); openDay(); toast(`기록 ${docs.length}개를 가져왔어요`);
+    current = new Date(); openDay(); renderMyFoods();
+    const days = docs.filter(d => isDayKey(d.id)).length;
+    toast(days ? `기록 ${docs.length}개를 가져왔어요` + (addedFoods ? ` · 내 음식 ${addedFoods}개` : "") : addedFoods ? `내 음식 ${addedFoods}개를 등록했어요` : "프로필을 가져왔어요");
   } catch (err) { toast("가져오지 못했어요: " + (err.message || err)); }
 };
 
@@ -2109,6 +2138,49 @@ applyTheme(document.documentElement.dataset.theme);
 $("themeBtn").onclick = () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 $("darkSw").onchange = () => applyTheme($("darkSw").checked ? "dark" : "light");
 
+// ---------- 설정 · 내 음식 ----------
+const MEAL_LABEL = { breakfast: "아침", lunch: "점심", pre: "운동 전", dinner: "운동 후 · 저녁", etc: "기타 · 간식" };
+function renderMyFoods(){
+  const box = $("myFoodList"); if (!box) return; box.innerHTML = "";
+  const list = myFoods();
+  $("myFoodSum").textContent = list.length ? `${list.length}개` : "";
+  if (!list.length) { const p = document.createElement("p"); p.className = "note"; p.style.margin = "0"; p.textContent = "아직 없어요 · 기록한 음식 옆 ☆를 누르거나 아래에서 추가하세요"; box.appendChild(p); return; }
+  for (const key of Object.keys(MEAL_LABEL)) {
+    const items = list.filter(x => (x.meal || "etc") === key); if (!items.length) continue;
+    const h = document.createElement("p"); h.className = "sub-h"; h.textContent = MEAL_LABEL[key]; box.appendChild(h);
+    for (const it of items) {
+      const row = document.createElement("div"); row.className = "pick";
+      const t = document.createElement("div"); t.className = "t"; t.textContent = it.name;
+      const sm = document.createElement("small"); sm.textContent = `${it.kcal}kcal · 단백질 ${it.protein}g${it.sub ? " · " + it.sub : ""}`; t.appendChild(sm);
+      const del = document.createElement("button"); del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", it.name + " 지우기");
+      del.onclick = () => { profile.myFoods = myFoods().filter(x => x.id !== it.id); saveProfile(); renderMyFoods(); toast(`${it.name} 지웠어요`); };
+      row.append(t, del); box.appendChild(row);
+    }
+  }
+}
+function openMyFoodSheet(){
+  const { sh, close } = makeSheet("내 음식 추가");
+  const f = document.createElement("div"); f.className = "field";
+  f.innerHTML = `<input class="full" id="mfName" placeholder="음식 이름 (예: 사조 닭가슴살 블랙페퍼)" aria-label="음식 이름">
+    <input class="full" id="mfSub" placeholder="양 · 메모 (예: 100g)" aria-label="양">
+    <input id="mfKcal" type="number" inputmode="numeric" placeholder="kcal" aria-label="칼로리">
+    <input id="mfPro" type="number" inputmode="decimal" placeholder="단백질 g" aria-label="단백질">
+    <input id="mfCarb" type="number" inputmode="decimal" placeholder="탄수화물 g" aria-label="탄수화물">
+    <input id="mfFat" type="number" inputmode="decimal" placeholder="지방 g" aria-label="지방">
+    <input class="full" id="mfNa" type="number" inputmode="numeric" placeholder="나트륨 mg (선택)" aria-label="나트륨">
+    <label class="lab full">주로 먹는 때<select id="mfMeal">${Object.entries(MEAL_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>`;
+  const st = document.createElement("p"); st.className = "status";
+  const ok = document.createElement("button"); ok.className = "btn primary"; ok.textContent = "저장";
+  ok.onclick = () => {
+    const v = id => f.querySelector("#" + id).value, n1 = id => Math.round((+v(id) || 0) * 10) / 10;
+    const name = v("mfName").trim(), kcal = Math.round(+v("mfKcal") || 0);
+    if (!name || !kcal) { st.textContent = "음식 이름과 칼로리를 적어주세요"; return; }
+    saveMyFood({ name, sub: v("mfSub").trim(), kcal, protein: n1("mfPro"), carb: n1("mfCarb"), fat: n1("mfFat"), sodium: Math.round(+v("mfNa") || 0), meal: v("mfMeal") });
+    close(); renderMyFoods(); toast(`${name} 저장했어요`);
+  };
+  const no = document.createElement("button"); no.className = "btn"; no.textContent = "닫기"; no.onclick = close;
+  sh.append(f, st, ok, no);
+}
 // ---------- 설정 화면 ----------
 function openSettings(){
   $("pName").value = profile.nickname || "";
@@ -2116,10 +2188,12 @@ function openSettings(){
   $("setGoal").textContent = GOALS[profile.goal] || "";
   $("settings").hidden = false; $("settings").scrollTop = 0; document.body.style.overflow = "hidden";
   if (typeof renderNotify === "function") renderNotify();
+  renderMyFoods();
 }
 function closeSettings(){ $("settings").hidden = true; document.body.style.overflow = ""; }
 $("settingsBtn").onclick = openSettings;
 $("setClose").onclick = closeSettings;
+$("myFoodAdd").onclick = openMyFoodSheet;
 document.querySelectorAll("[data-open-settings]").forEach(b => b.onclick = openSettings);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("settings").hidden) closeSettings(); });
 
