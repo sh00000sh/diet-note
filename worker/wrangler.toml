@@ -2,6 +2,11 @@ name = "diet-note-api"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 
+# Claude API는 홍콩에서 오는 요청을 막아요(403 Request not allowed).
+# 한국 폰은 가끔 Cloudflare 홍콩 서버로 연결돼서, 서버를 항상 도쿄 근처에서 돌리게 고정해요.
+[placement]
+region = "aws:ap-northeast-1"
+
 # 30분마다 알림 확인
 [triggers]
 crons = ["*/30 * * * *"]

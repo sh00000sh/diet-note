@@ -23,7 +23,7 @@ export default {
         const body = await req.json();
         const prompt = String(body.prompt || "").slice(0, 6000);
         if (!prompt) return json({ code: "invalid_argument", message: "내용이 비어 있어요" }, 400, cors);
-        const text = await askClaude(env, prompt, body.image);
+        const text = await askClaude(env, prompt, body.image, req.cf && req.cf.colo);
         if (url.pathname === "/ai/text") return json({ text }, 200, cors);
         const obj = parseJson(text);
         if (!obj) return json({ code: "bad_output", message: "결과를 읽지 못했어요", text }, 502, cors);
@@ -82,7 +82,7 @@ async function bumpUsage(env, uid) {
 }
 
 // ---------- AI ----------
-async function askClaude(env, prompt, image) {
+async function askClaude(env, prompt, image, colo) {
   const content = [];
   if (image && typeof image === "string") {
     const m = image.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/);
@@ -105,7 +105,7 @@ async function askClaude(env, prompt, image) {
       type === "not_found_error" ? "AI 모델 이름이 잘못됐어요 (" + msg.slice(0, 80) + ")" :
       type === "overloaded_error" || res.status === 529 ? "AI가 지금 붐벼요. 잠시 후 다시 해보세요" :
       type === "rate_limit_error" ? "AI 요청이 너무 많아요. 잠시 후 다시 해보세요" :
-      `AI 오류 ${res.status}: ${(msg || t).slice(0, 160)}`);
+      `AI 오류 ${res.status}: ${(msg || t).slice(0, 160)}${colo ? " (서버 " + colo + ")" : ""}`);
     e.code = "ai_error"; throw e;
   }
   const out = await res.json();

@@ -6,6 +6,6 @@
     "web-push-browser": "1.4.2"
   },
   "devDependencies": {
-    "wrangler": "^3.80.0"
+    "wrangler": "4.150.0"
   }
 }
