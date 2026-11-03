@@ -824,10 +824,22 @@ function extraRow(x, i){
   const lb = document.createElement("label"); lb.textContent = x.name;
   if (x.ai) { const tag = document.createElement("span"); tag.className = "ai-tag"; tag.textContent = "AI"; lb.appendChild(tag); }
   const note = x.note || x.sub;
-  if (note) { const s = document.createElement("span"); s.className = "sub"; s.textContent = note; lb.appendChild(s); }
+  let more = null;
+  if (note) {
+    const s = document.createElement("span"); s.className = "sub"; s.textContent = note; lb.appendChild(s);
+    // 두 줄 넘어서 잘리면 화살표로 펼쳐 보기
+    more = document.createElement("button"); more.className = "sub-more"; more.hidden = true;
+    more.setAttribute("aria-label", "메모 펼치기"); more.setAttribute("aria-expanded", "false");
+    more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+    const toggle = ev => { ev.preventDefault(); ev.stopPropagation();
+      const open = !s.classList.contains("open"); s.classList.toggle("open", open); more.classList.toggle("open", open);
+      more.setAttribute("aria-expanded", String(open)); more.setAttribute("aria-label", open ? "메모 접기" : "메모 펼치기"); };
+    more.onclick = toggle;
+    if (note.length > 28) { more.hidden = false; s.style.cursor = "pointer"; s.addEventListener("click", toggle); }
+  }
   const del = document.createElement("button"); del.className = "del"; del.setAttribute("aria-label", x.name + " 삭제"); del.textContent = "×";
   del.onclick = () => { day.extras.splice(i, 1); render(); scheduleSave(); };
-  wrap.append(lb);
+  wrap.append(lb); if (more) wrap.append(more);
   row.append(wrap, metaEl(x), del);
   row.dataset.kind = "extra"; row.dataset.idx = i; row.classList.add("draggable");
   return row;

@@ -477,3 +477,9 @@ html.pre .wrap,html.pre .tabbar,html.pre .fab{visibility:hidden}
 
 .base-row{display:block;width:100%;text-align:left;margin:-2px 0 8px;padding:0;color:var(--muted);font-size:.8rem;font-weight:600}
 .base-row:hover{color:var(--accent)}
+
+.item .sub.open{display:block;-webkit-line-clamp:unset;overflow:visible}
+.sub-more{display:flex;align-items:center;gap:2px;height:24px;margin-top:-2px;padding:0 6px 0 0;color:var(--muted);font-size:.78rem;font-weight:600}
+.sub-more svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.sub-more.open svg{transform:rotate(180deg)}
+.sub-more[hidden]{display:none}
