@@ -77,17 +77,17 @@ const PRESET_IDS = PRESET;
 
 // ---------- 운동 목록 ----------
 const EXERCISES = {
-  "가슴": ["팔 돌리기", "가슴 스트레칭", "벤치 프레스", "인클라인 벤치 프레스", "덤벨 프레스", "인클라인 덤벨 프레스", "체스트 프레스 머신", "원 암 체스트 프레스 머신", "해머 아이소 래터럴 체스트 프레스", "펙덱 플라이", "펙토럴 플라이", "케이블 플라이", "딥스", "푸시업"],
-  "등": ["캣카우 스트레칭", "밴드 풀어파트", "바벨 로우", "원 암 덤벨 로우", "티바 로우", "데드리프트", "랫 풀다운", "케이블 암 풀다운", "시티드 케이블 로우 (롱 풀)", "풀업"],
-  "어깨": ["팔 돌리기", "밴드 외회전", "오버헤드 프레스", "덤벨 숄더 프레스", "덤벨 사이드 레터럴 레이즈", "프론트 레이즈", "숄더 프레스 머신", "리버스 펙 덱 플라이", "원 암 케이블 레터럴 레이즈", "페이스풀"],
-  "하체": ["맨몸 스쿼트", "고관절 스트레칭", "스쿼트", "런지", "루마니안 데드리프트", "힙 쓰러스트", "레그 프레스", "시티드 레그 프레스", "핵 스쿼트", "레그 익스텐션", "레그 컬", "카프 레이즈"],
+  "가슴": ["팔 돌리기", "가슴 스트레칭", "벤치 프레스", "인클라인 벤치 프레스", "덤벨 프레스", "인클라인 덤벨 프레스", "체스트 프레스 머신", "원 암 체스트 프레스 머신", "해머 아이소 래터럴 체스트 프레스", "펙덱 플라이", "펙토럴 플라이", "케이블 플라이", "스미스 벤치 프레스", "스미스 인클라인 벤치 프레스", "딥스", "푸시업"],
+  "등": ["캣카우 스트레칭", "밴드 풀어파트", "바벨 로우", "원 암 덤벨 로우", "티바 로우", "데드리프트", "랫 풀다운", "케이블 암 풀다운", "시티드 케이블 로우 (롱 풀)", "스미스 벤트오버 로우", "풀업"],
+  "어깨": ["팔 돌리기", "밴드 외회전", "오버헤드 프레스", "덤벨 숄더 프레스", "덤벨 사이드 레터럴 레이즈", "프론트 레이즈", "숄더 프레스 머신", "리버스 펙 덱 플라이", "덤벨 벤트오버 레이즈", "원 암 케이블 레터럴 레이즈", "페이스풀", "스미스 숄더 프레스"],
+  "하체": ["맨몸 스쿼트", "고관절 스트레칭", "스쿼트", "런지", "루마니안 데드리프트", "힙 쓰러스트", "레그 프레스", "시티드 레그 프레스", "핵 스쿼트", "레그 익스텐션", "레그 컬", "힙 어브덕션", "힙 어덕션", "카프 레이즈", "스미스 스쿼트", "스미스 런지", "스미스 힙 쓰러스트", "스미스 카프 레이즈"],
   "팔": ["손목 돌리기", "바벨 컬", "덤벨 컬", "해머 컬", "오버헤드 익스텐션", "덤벨 오버헤드 익스텐션", "라잉 트라이셉스 익스텐션", "케이블 컬", "트라이셉스 푸시다운"],
   "복근": ["캣카우 스트레칭", "데드버그", "케이블 크런치", "크런치", "레그 레이즈", "행잉 레그 레이즈", "러시안 트위스트", "플랭크"],
   "유산소": ["유산소", "경사 걷기", "러닝머신", "사이클", "스텝밀", "로잉머신", "일립티컬"],
 };
 
 // 운동 설명: [그림, 종류, 하는 법 · 자극 부위]
-const KINDS = { warm: "몸풀기", free: "프리웨이트", machine: "머신", cable: "케이블", body: "맨몸", cardio: "유산소" };
+const KINDS = { warm: "몸풀기", free: "프리웨이트", machine: "머신", smith: "스미스 머신", cable: "케이블", body: "맨몸", cardio: "유산소" };
 const EX_INFO = {
   "팔 돌리기": ["stretch", "warm", "양팔을 크게 앞뒤로 10번씩 돌리기 · 어깨 관절 풀기"],
   "가슴 스트레칭": ["stretch", "warm", "문틀에 팔 대고 몸을 앞으로 기울이기 · 가슴 늘리기"],
@@ -136,6 +136,17 @@ const EX_INFO = {
   "레그 익스텐션": ["legext", "machine", "앉아서 무릎을 쭉 펴기 · 허벅지 앞"],
   "레그 컬": ["legcurl", "machine", "엎드려 발뒤꿈치를 엉덩이 쪽으로 당기기 · 허벅지 뒤"],
   "카프 레이즈": ["calf", "machine", "발끝으로 서서 뒤꿈치 들기 · 종아리"],
+  "힙 어브덕션": ["abduct", "machine", "앉아서 무릎을 바깥으로 벌리기 · 엉덩이 옆(중둔근)"],
+  "힙 어덕션": ["adduct", "machine", "앉아서 무릎을 안쪽으로 모으기 · 허벅지 안쪽(내전근)"],
+  "덤벨 벤트오버 레이즈": ["bentraise", "free", "상체를 숙이고 덤벨을 양옆으로 들기 · 어깨 뒤(후면)"],
+  "스미스 벤치 프레스": ["bench", "smith", "스미스 머신 바를 가슴까지 내렸다 밀기 · 가슴 전체 · 바가 레일을 따라 움직여 혼자 하기 안전해요"],
+  "스미스 인클라인 벤치 프레스": ["incline", "smith", "벤치를 30~45도 세우고 스미스 바 밀기 · 가슴 윗부분"],
+  "스미스 벤트오버 로우": ["bentrow", "smith", "상체를 숙이고 스미스 바를 배꼽 쪽으로 당기기 · 등 두께"],
+  "스미스 숄더 프레스": ["ohp", "smith", "앉거나 서서 스미스 바를 머리 위로 밀기 · 어깨 앞·옆"],
+  "스미스 스쿼트": ["squat", "smith", "스미스 바를 메고 앉았다 일어나기 · 발을 살짝 앞에 두면 무릎이 편해요 · 허벅지·엉덩이"],
+  "스미스 런지": ["lunge", "smith", "스미스 바를 메고 한 발 앞뒤로 벌려 앉기 · 허벅지·엉덩이 · 한쪽씩 같은 횟수"],
+  "스미스 힙 쓰러스트": ["hipthrust", "smith", "등을 벤치에 대고 스미스 바를 골반에 올려 들어 올리기 · 엉덩이"],
+  "스미스 카프 레이즈": ["calf", "smith", "스미스 바를 메고 발끝으로 서서 뒤꿈치 들기 · 종아리"],
   "바벨 컬": ["curl", "free", "팔꿈치 고정하고 바벨 들어 올리기 · 이두"],
   "덤벨 컬": ["curl", "free", "덤벨을 번갈아 들어 올리기 · 이두"],
   "해머 컬": ["curl", "free", "덤벨을 세로로 잡고 들기 · 이두·팔뚝"],
@@ -182,6 +193,9 @@ const COMBOS = {
 
 // 그림 (48×48 칸에 그린 간단한 자세 그림)
 const ICONS = {
+  abduct:{h:[24,9],b:[[24,13,24,27],[24,27,12,41],[24,27,36,41],[24,16,17,25],[24,16,31,25]],e:[[14,27,34,27],[6,34,10,44],[42,34,38,44]]},
+  adduct:{h:[24,9],b:[[24,13,24,27],[24,27,19,42],[24,27,29,42],[24,16,17,25],[24,16,31,25]],e:[[14,27,34,27],[13,32,15,44],[35,32,33,44]]},
+  bentraise:{h:[12,14],b:[[15,16,30,26],[30,26,27,35,30,44],[18,18,8,24]],w:[[6,21,6,28]],e:[[4,44,44,44]]},
   bench:{h:[10,27],b:[[14,28,30,28,36,34,36,42],[22,28,22,15]],e:[[8,32,38,32],[12,32,12,42],[33,32,33,42],[12,15,32,15]],w:[[12,11,12,19],[32,11,32,19]]},
   incline:{h:[32,19],b:[[29,23,16,35,10,36,10,42],[27,25,29,10]],e:[[12,40,34,20],[24,31,24,42],[21,10,37,10]],w:[[21,6,21,14],[37,6,37,14]]},
   chest:{h:[17,11],b:[[17,15,17,33,28,33,28,43],[17,21,33,21]],e:[[12,8,12,36,26,36],[19,36,19,44],[33,15,33,27],[40,6,40,44]]},
@@ -237,10 +251,16 @@ function iconSVG(key){
 }
 function icoEl(name){ const d = document.createElement("span"); d.className = "ex-ico"; d.innerHTML = iconSVG(EX_INFO[name]?.[0]); return d; }
 // 한쪽 무게·횟수로 적는 운동은 양쪽 합으로 볼륨 계산 (짐워크와 같은 방식)
-const PER_SIDE = new Set(["원 암 체스트 프레스 머신", "해머 아이소 래터럴 체스트 프레스", "원 암 케이블 레터럴 레이즈", "덤벨 사이드 레터럴 레이즈", "원 암 덤벨 로우"]);
+const PER_SIDE = new Set(["원 암 체스트 프레스 머신", "해머 아이소 래터럴 체스트 프레스", "원 암 케이블 레터럴 레이즈", "덤벨 사이드 레터럴 레이즈", "덤벨 벤트오버 레이즈", "원 암 덤벨 로우"]);
 // 원판 안 끼운 빈 기계의 무게(시작 저항) · 기계 스티커 기준 · 사용자가 바꾸면 profile.baseKg 에 저장
 const BASE_KG = { "해머 아이소 래터럴 체스트 프레스": 3.2 };
-const baseKgOf = name => { const v = profile?.baseKg?.[name]; return v != null && v !== "" ? +v || 0 : BASE_KG[name] || 0; };
+const isSmith = name => EX_INFO[name]?.[1] === "smith";
+const baseKgOf = name => {
+  const key = isSmith(name) ? "__smith" : name;   // 스미스 머신은 종목이 달라도 같은 기계 → 바 무게 하나로
+  const v = profile?.baseKg?.[key]; return v != null && v !== "" ? +v || 0 : BASE_KG[name] || 0;
+};
+// 스미스 바 무게 참고값 (제조사 스펙 · 같은 브랜드도 모델·연식마다 달라요)
+const SMITH_BRANDS = [["라이프피트니스", 9], ["해머 스트렝스", 13, "9~14kg"], ["매트릭스", 11], ["테크노짐", 8], ["싸이벡스", 7], ["프리코어", 9, "7~11kg"], ["바디솔리드", 11], ["균형추 없는 홈짐용", 20, "16~20kg"]];
 const setLoad = (name, s) => (+s.kg || 0) + (+s.reps > 0 ? baseKgOf(name) : 0);
 const PARTS = Object.keys(EXERCISES);
 const CARDIO_MET = { "팔 돌리기": 3, "가슴 스트레칭": 2.5, "캣카우 스트레칭": 2.5, "밴드 풀어파트": 3, "밴드 외회전": 3, "맨몸 스쿼트": 4, "고관절 스트레칭": 2.5, "손목 돌리기": 2.5, "데드버그": 3, "러닝머신": 9, "경사 걷기": 6, "사이클": 7, "스텝밀": 9, "로잉머신": 7, "일립티컬": 5 };
@@ -1443,11 +1463,13 @@ function renderLog(){
     const prog = document.createElement("p"); prog.className = "prog";
     const upd = () => { st.textContent = exStatsText(e); const pi = progInfo(e); prog.textContent = pi.text; prog.className = "prog " + pi.cls; prog.hidden = !pi.text; };
     upd(); ex.appendChild(prog);
-    if (!isCardio(e) && EX_INFO[e.name]?.[1] === "machine") {
-      const b0 = baseKgOf(e.name);
+    if (!isCardio(e) && (EX_INFO[e.name]?.[1] === "machine" || isSmith(e.name))) {
+      const b0 = baseKgOf(e.name), sm = isSmith(e.name);
       const br = document.createElement("button"); br.className = "base-row";
-      br.textContent = b0 ? `빈 기계 ${one(b0).replace(".0", "")}kg${PER_SIDE.has(e.name) ? " (한쪽)" : ""} · 원판 무게만 적으면 볼륨에 더해요 · 바꾸기 ›` : "원판 끼우는 기계면 빈 기계 무게 적기 ›";
-      br.onclick = () => openBaseSheet(e.name);
+      br.textContent = sm
+        ? (profile?.baseKg?.__smith != null ? `스미스 바 ${one(b0).replace(".0", "")}kg · 양쪽 원판 합만 적으면 볼륨에 더해요 · 바꾸기 ›` : "스미스 바 무게 정하기 › (브랜드마다 달라요)")
+        : b0 ? `빈 기계 ${one(b0).replace(".0", "")}kg${PER_SIDE.has(e.name) ? " (한쪽)" : ""} · 원판 무게만 적으면 볼륨에 더해요 · 바꾸기 ›` : "원판 끼우는 기계면 빈 기계 무게 적기 ›";
+      br.onclick = () => sm ? openSmithSheet() : openBaseSheet(e.name);
       ex.appendChild(br);
     }
 
@@ -1490,6 +1512,32 @@ function renderLog(){
   });
 }
 
+function openSmithSheet(){
+  const { sh, close } = makeSheet("스미스 머신 바 무게");
+  const p = document.createElement("p"); p.className = "status";
+  p.textContent = "스미스 바는 브랜드마다 무게가 달라요. 기계 옆 스티커나 맨 위 가로대에 적힌 브랜드를 보고 골라주세요. 스티커에 무게가 적혀 있으면 그 숫자가 제일 정확해요";
+  const chips = document.createElement("div"); chips.className = "smith-chips";
+  const lab = document.createElement("label"); lab.className = "lab full"; lab.textContent = "바 무게 (kg) · 모든 스미스 종목에 같이 적용";
+  const inp = document.createElement("input"); inp.type = "number"; inp.inputMode = "decimal"; inp.step = "0.5";
+  inp.value = profile?.baseKg?.__smith ?? ""; inp.placeholder = "예: 9";
+  for (const [name, kg, range] of SMITH_BRANDS) {
+    const c = document.createElement("button"); c.className = "chip"; c.innerHTML = `<b></b><small></small>`;
+    c.querySelector("b").textContent = name; c.querySelector("small").textContent = range || kg + "kg";
+    c.onclick = () => { inp.value = kg; chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === c)); };
+    chips.appendChild(c);
+  }
+  lab.appendChild(inp);
+  const tip = document.createElement("p"); tip.className = "note"; tip.style.margin = "0";
+  tip.textContent = "세트에는 바 무게 빼고 양쪽에 끼운 원판 합만 적으면 돼요. 예: 양쪽 10kg씩이면 20";
+  const ok = document.createElement("button"); ok.className = "btn primary"; ok.textContent = "저장";
+  ok.onclick = () => {
+    const v = Math.max(0, Math.round((+inp.value || 0) * 10) / 10);
+    profile.baseKg = { ...(profile.baseKg || {}), __smith: v };
+    saveProfile(); render(true); close(); toast(`스미스 바 ${v}kg로 저장했어요`);
+  };
+  const no = document.createElement("button"); no.className = "btn"; no.textContent = "닫기"; no.onclick = close;
+  sh.append(p, chips, lab, tip, ok, no);
+}
 function openBaseSheet(name){
   const { sh, close } = makeSheet(`${name} · 빈 기계 무게`);
   const p = document.createElement("p"); p.className = "status";

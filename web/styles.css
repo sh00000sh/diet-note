@@ -487,3 +487,11 @@ html.pre .wrap,html.pre .tabbar,html.pre .fab{visibility:hidden}
 .item .star{width:32px;height:32px;display:grid;place-items:center;color:var(--muted);font-size:1.05rem;flex:none}
 .item .star.on{color:#f5b301}
 #myFoodList .pick .del{width:32px;height:32px;color:var(--muted);font-size:1.2rem}
+
+.smith-chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.smith-chips .chip{display:grid;gap:1px;text-align:left;padding:10px 12px;border-radius:12px;background:var(--fill);color:var(--fg)}
+.smith-chips .chip b{font-size:.9rem}
+.smith-chips .chip small{font-size:.76rem;color:var(--muted)}
+.smith-chips .chip.on{background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent) inset}
+.sheet .lab{display:grid;gap:6px;font-size:.82rem;color:var(--muted);font-weight:600}
+.sheet .lab input,.sheet .lab select{width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--fill);border:0;border-radius:14px;padding:12px 14px;min-width:0}
