@@ -752,9 +752,9 @@ async function photoRecord(meal, file){
   if (aiBusy) return; aiBusy = true;
   toast("사진 속 음식을 분석하는 중이에요…");
   try {
-    const x = await aiEstimate("", file, meal);
-    day.extras.push(x); render(); scheduleSave();
-    toast(`${x.name} 기록했어요 · ${fmt(x.kcal)}kcal, 단백질 ${x.protein}g`);
+    const xs = await aiEstimate("", file, meal);
+    day.extras.push(...xs); render(); scheduleSave();
+    toast(aiToast(xs));
   } catch (e) { toast(aiErrMsg(e, "분석하지 못했어요. 잠시 후 다시 해보세요")); }
   finally { aiBusy = false; }
 }
@@ -781,9 +781,9 @@ function openPhotoSheet(meal, firstFile){
     if (!sample) { st.textContent = aiOffMsg(); return; }
     if (aiBusy) return; aiBusy = true; go.disabled = true; st.textContent = "사진 속 음식을 분석하는 중이에요…";
     try {
-      const x = await aiEstimate(ta.value.trim(), photo, meal);
-      day.extras.push(x); render(); scheduleSave(); done();
-      toast(`${x.name} 기록했어요 · ${fmt(x.kcal)}kcal, 단백질 ${x.protein}g`);
+      const xs = await aiEstimate(ta.value.trim(), photo, meal);
+      day.extras.push(...xs); render(); scheduleSave(); done();
+      toast(aiToast(xs));
     } catch (e) { st.textContent = aiErrMsg(e, "분석하지 못했어요. 잠시 후 다시 해보세요"); }
     finally { aiBusy = false; go.disabled = false; }
   };
@@ -806,9 +806,9 @@ function openInputSheet(meal){
     if (!text && !photo) { st.textContent = "먹은 걸 적거나 사진을 골라주세요"; return; }
     if (aiBusy) return; aiBusy = true; go.disabled = true; st.textContent = "계산하는 중이에요…";
     try {
-      const x = await aiEstimate(text, photo, meal);
-      day.extras.push(x); render(); scheduleSave(); close();
-      toast(`${x.name} 기록했어요 · ${fmt(x.kcal)}kcal, 단백질 ${x.protein}g`);
+      const xs = await aiEstimate(text, photo, meal);
+      day.extras.push(...xs); render(); scheduleSave(); close();
+      toast(aiToast(xs));
     } catch (e) {
       st.textContent = aiErrMsg(e, "계산하지 못했어요. 잠시 후 다시 해보세요");
     } finally { aiBusy = false; go.disabled = false; }
@@ -1024,12 +1024,22 @@ function workoutLine(w){
 async function aiEstimate(text, photo, meal){
   const prompt = `${personLine()}이 먹은 음식이야.
 ${text ? (photo ? "사진을 보고 음식을 알아보되, 먹은 사람이 덧붙인 말을 양·재료 판단에 우선 반영해줘: " : "설명: ") + text : "사진을 보고 음식을 알아봐줘."}
-사진에 영양성분표가 있으면 그 숫자를 그대로 써. 없으면 설명한 양(없으면 1인분) 기준으로 추정해서 JSON 하나만 답해:
-{"name":"음식 이름(짧게)","kcal":숫자,"protein":숫자(g),"carb":숫자(g),"fat":숫자(g),"sodium":숫자(mg),"note":"이 음식 기준으로 부족하거나 주의할 점 한 줄"}`;
+사진에 영양성분표가 있으면 그 숫자를 그대로 써. 없으면 설명한 양(없으면 1인분) 기준으로 추정해.
+음식이 여러 개면 음식마다 items에 하나씩 나눠 담아. 하나면 items에 하나만.
+JSON 하나만 답해 (다른 말 없이):
+{"items":[{"name":"음식 이름(짧게, 양 포함)","kcal":숫자,"protein":숫자(g),"carb":숫자(g),"fat":숫자(g),"sodium":숫자(mg),"note":"이 음식 기준으로 부족하거나 주의할 점 한 줄"}]}`;
   const opts = {}; if (photo) opts.images = [photo];
   const r = await sample.json(prompt, opts);
-  return { name: String(r.name || text || "음식"), kcal: Math.round(+r.kcal || 0), protein: Math.round(+r.protein || 0),
-    carb: Math.round(+r.carb || 0), fat: Math.round(+r.fat || 0), sodium: Math.round(+r.sodium || 0), note: String(r.note || ""), meal, ai: true };
+  const list = Array.isArray(r) ? r : Array.isArray(r?.items) ? r.items : [r];
+  const out = list.filter(x => x && (x.name || x.kcal)).map(x => ({ name: String(x.name || text || "음식"), kcal: Math.round(+x.kcal || 0), protein: Math.round(+x.protein || 0),
+    carb: Math.round(+x.carb || 0), fat: Math.round(+x.fat || 0), sodium: Math.round(+x.sodium || 0), note: String(x.note || ""), meal, ai: true }));
+  if (!out.length) throw { code: "bad_output", message: "결과를 읽지 못했어요" };
+  return out;
+}
+// 여러 음식이면 한 줄로 요약해서 알려주기
+function aiToast(xs){
+  const k = xs.reduce((a, x) => a + x.kcal, 0), pr = xs.reduce((a, x) => a + x.protein, 0);
+  return xs.length === 1 ? `${xs[0].name} 기록했어요 · ${fmt(k)}kcal, 단백질 ${pr}g` : `${xs.length}개 기록했어요 · 합계 ${fmt(k)}kcal, 단백질 ${pr}g`;
 }
 $("review").onclick = async () => {
   if (!sample) { $("aiStatus").textContent = aiOffMsg(); return; }

@@ -92,7 +92,7 @@ async function askClaude(env, prompt, image, colo) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: env.AI_MODEL || DEFAULT_MODEL, max_tokens: 800, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({ model: env.AI_MODEL || DEFAULT_MODEL, max_tokens: 1500, messages: [{ role: "user", content }] }),
   });
   if (!res.ok) {
     const t = await res.text();
@@ -112,9 +112,14 @@ async function askClaude(env, prompt, image, colo) {
   return (out.content || []).filter(c => c.type === "text").map(c => c.text).join("").trim();
 }
 function parseJson(text) {
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  try { return JSON.parse(m[0]); } catch { return null; }
+  // 코드블록(```json) 벗기고, 통째로 → 배열 → 첫 객체 순서로 읽어보기
+  const t = String(text || "").replace(/```(?:json)?/gi, "").trim();
+  const tryParse = s => { try { return JSON.parse(s); } catch { return null; } };
+  let v = tryParse(t);
+  if (v == null) { const a = t.match(/\[[\s\S]*\]/); if (a) v = tryParse(a[0]); }
+  if (v == null) { const m = t.match(/\{[\s\S]*\}/); if (m) v = tryParse(m[0]) || tryParse("[" + m[0] + "]"); }
+  if (Array.isArray(v)) v = { items: v };
+  return v && typeof v === "object" ? v : null;
 }
 
 // ---------- 알림 ----------
