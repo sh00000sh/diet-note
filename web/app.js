@@ -322,22 +322,30 @@ function userCol(){ return db && uid ? db.collection("data/users/" + uid) : null
 function dayData(k){ return k === keyOf(current) ? day : (cache[k] || loadLocal(k)); }
 
 let editVer = 0;   // 고칠 때마다 +1 — 저장이 끝났을 때 그 사이 또 고친 게 있으면 서버 값으로 덮어쓰지 않게
+// 지금 열려 있는 날짜 (저장은 항상 이 날짜로 · 달력에서 다른 날을 눌러도 섞이지 않게)
+let dayKey = null;
+const unsaved = new Map();   // 날짜 → 아직 서버에 못 올린 기록
 function scheduleSave(){
   editVer++;
-  saveLocal(keyOf(current), day);
+  day.updatedAt = Date.now();
+  const k = dayKey || keyOf(current), snap = JSON.parse(JSON.stringify(day));
+  saveLocal(k, snap); cache[k] = snap;   // 다시 열어도 방금 고친 값이 보이게
+  unsaved.set(k, { data: snap, ver: editVer });
   dirty = true;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, 700);
 }
 async function flush(){
   const col = userCol();
-  if (!col) { $("saveStatus").textContent = "이 기기에만 저장돼요"; return; }
+  if (!col) { $("saveStatus").textContent = "이 기기에만 저장돼요"; unsaved.clear(); return; }
   if (saving) { pending = true; return; }
   saving = true;
-  const k = keyOf(current), ver = editVer;
   try {
-    await col.doc(k).set({ ...day, date: k, totals: totalsOf(day), updatedAt: Date.now() });
-    if (editVer === ver && !pending) dirty = false;
+    for (const [k, { data, ver }] of [...unsaved]) {
+      await col.doc(k).set({ ...data, date: k, totals: totalsOf(data), updatedAt: data.updatedAt || Date.now() });
+      if (unsaved.get(k)?.ver === ver) unsaved.delete(k);
+    }
+    if (!unsaved.size && !pending) dirty = false;
     $("saveStatus").textContent = "저장됨";
     $("wSaved").textContent = "저장됨";
   } catch (e) {
@@ -361,9 +369,10 @@ async function saveProfile(){
 
 function openDay(){
   if (dirty) { clearTimeout(saveTimer); flush(); }
-  const k = keyOf(current);
+  const k = keyOf(current); dayKey = k;
   viewMonth = new Date(current.getFullYear(), current.getMonth(), 1); calWeek = null;
-  const src = cache[k] || loadLocal(k);
+  const a = cache[k], b = loadLocal(k);   // 서버 사본과 이 폰 사본 중 더 최근 걸로
+  const src = !a ? b : !b ? a : ((+b.updatedAt || 0) > (+a.updatedAt || 0) ? b : a);
   day = src ? cleanDay(src) : emptyDay();
   $("feedback").hidden = true; $("aiStatus").textContent = ""; $("wSaved").textContent = "";
   render(true);
@@ -1942,8 +1951,11 @@ function attachStore(){
         }
       } else if (isDayKey(d.id)) next[d.id] = d.data();
     });
+    // 이 폰에 더 최근 기록이 있거나 아직 못 올린 기록이 있으면 그걸 우선
+    for (const id of Object.keys(next)) { const l = loadLocal(id); if (l && (+l.updatedAt || 0) > (+next[id].updatedAt || 0)) next[id] = l; }
+    for (const [id, v] of unsaved) next[id] = v.data;
     cache = next;
-    const k = keyOf(current);
+    const k = dayKey || keyOf(current);
     if (!saving && !dirty && cache[k]) day = cleanDay(cache[k]);
     render(!$("wLog").contains(document.activeElement));
     afterLoad();
